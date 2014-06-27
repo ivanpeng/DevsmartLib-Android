@@ -29,11 +29,11 @@ package com.devsmart.android.ui;
 import java.util.LinkedList;
 import java.util.Queue;
 
-
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
 import android.view.MotionEvent;
@@ -54,6 +54,7 @@ import android.widget.Scroller;
 public class HorizontalListView extends AdapterView<ListAdapter>
 {
 
+	private static final float MAX_X_SCROLL_THRESHOLD = 50;
 	public boolean mAlwaysOverrideTouch = true;
 	protected ListAdapter mAdapter;
 	
@@ -65,6 +66,11 @@ public class HorizontalListView extends AdapterView<ListAdapter>
 	protected int mCurrentX;
 	// the scroll to apply in the next drawing / onLayout Frame
 	protected int mNextX;
+	// location coordinates to determine how much has been scrolled, and when to disallow intercept
+	protected float mDownX;
+	protected float mDownY;
+	protected float mUpX;
+	protected float mUpY;
 	
 	// the start of the first view visible
 	private int mDisplayOffset = 0;
@@ -429,7 +435,7 @@ public class HorizontalListView extends AdapterView<ListAdapter>
 		
 		if (mRightViewIndex == mAdapter.getCount() )
 		{
-			mMaxX = mCurrentX + rightEdge - getWidth()/2;
+			mMaxX = mCurrentX + rightEdge - getWidth();//2;
 		}
 		else
 		{
@@ -458,7 +464,7 @@ public class HorizontalListView extends AdapterView<ListAdapter>
 		
 		if (mLeftViewIndex == -1 )
 		{
-			mMinX = mCurrentX + leftEdge - getWidth()/2;
+			mMinX = mCurrentX + leftEdge;// - getWidth()/2;
 		}
 		else
 		{
@@ -555,8 +561,20 @@ public class HorizontalListView extends AdapterView<ListAdapter>
 		switch (ev.getAction())
 		{
 			case MotionEvent.ACTION_DOWN:
+				mDownX = ev.getX();
+				mDownY = ev.getY();
 				mFingerDown = true;
 				break;
+			case MotionEvent.ACTION_MOVE:
+				mUpX = ev.getX();
+				mUpY = ev.getY();
+				float deltaX = mDownX - mUpX;
+				float deltaY = mDownY - mUpY;
+				// do we need an absolute value threshold?
+				if (Math.abs(deltaX) > Math.abs(deltaY))
+					requestDisallowInterceptTouchEvent(true);
+				else	// is this necessary?
+					requestDisallowInterceptTouchEvent(false);
 			case MotionEvent.ACTION_UP:
 			case MotionEvent.ACTION_CANCEL:
 				mFingerDown = false;
@@ -805,7 +823,7 @@ public class HorizontalListView extends AdapterView<ListAdapter>
 		{
 			mPixelsToScrollLeft = pixelsToScrollLeft;
 			setInterpolator(new AccelerateDecelerateInterpolator());
-			setDuration(200);
+			setDuration(100);
 		}
 		
 		public void stop()
